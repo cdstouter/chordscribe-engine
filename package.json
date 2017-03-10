@@ -1,0 +1,23 @@
+{
+  "name": "chordscribe-engine",
+  "version": "0.1.0",
+  "description": "The layout engine behind ChordScribe",
+  "main": "layout.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Caleb Stouter",
+  "license": "MIT",
+  "dependencies": {
+    "async": "^2.1.5",
+    "blob-stream": "^0.1.3",
+    "fontkit-cachekerning": "^1.5.2",
+    "jquery": "^3.1.1",
+    "pdfkit-cachekerning": "^0.8.0",
+    "underscore": "^1.8.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cdstouter/chordscribe-engine.git"
+  }
+}
