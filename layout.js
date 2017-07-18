@@ -3,7 +3,6 @@ var path = require('path');
 var PDFDocument = require('pdfkit');
 var fontkit = require('fontkit');
 var _ = require('underscore');
-var $ = require('jquery');
 var async = require('async');
 var blobStream = require('blob-stream');
 
@@ -270,75 +269,6 @@ Layout.prototype.makePDF = function(outputFilename) {
     }
   }
   doc.end();
-};
-
-Layout.prototype.downloadPDF = function() {
-  var doc = new PDFDocument({
-    'autoFirstPage': false
-  });
-  var stream = doc.pipe(blobStream());
-  // register fonts
-  var self = this;
-  _.each(_.keys(this.data.fontFiles), function(font) {
-    doc.registerFont(font, self.fontBuffer[font]);
-    //doc.registerFont(font, self.data.fontFiles[font]);
-  });
-  console.log('Saving PDF, ' + String(this.pages.length) + ' page(s)...');
-  for (var currentPage=0;currentPage<this.pages.length;currentPage++) {
-    // create a new page
-    doc.addPage({
-      'size': [this.data.pageWidth * 72, this.data.pageHeight * 72],
-      'margin': 0
-    });
-    console.log('Page ' + String(currentPage) + ', ' + String(this.pages[currentPage].length) + ' text items');
-    // let the decorations add to the page
-    for (var i=0; i<this.decorationInstances.length; i++) {
-      this.pageMargin = this.data.margin.slice(0);
-      this.decorationInstances[i].drawPage(currentPage, doc);
-    }
-    for (var i=0;i<this.pages[currentPage].length;i++) {
-      var t = this.pages[currentPage][i];
-      doc.font(t.weight).fontSize(t.size);
-      if (t.align == 'left') {
-        doc.text(t.text, t.x * 72, t.y * 72);
-      } else {
-        var textWidth = this.measureTextWidth(t.text, this.font[t.weight], t.size);
-        if (t.align == 'center') {
-          doc.text(t.text, (t.x - (textWidth / 2)) * 72, t.y * 72);
-        } else if (t.align == 'right') {
-          doc.text(t.text, (t.x - textWidth) * 72, t.y * 72);
-        }
-      }
-    }
-  }
-  doc.end();
-  stream.on('finish', function() {
-    //var data = stream.toBlob("application/pdf");
-    //saveFile("test.pdf", "application/pdf", data);
-    //window.open(url);
-    var a = $("<a style='display: none;'/>");
-    var url = stream.toBlobURL("application/pdf");
-    a.attr("href", url);
-    a.attr("download", "test.pdf");
-    $("body").append(a);
-    a[0].click();
-    window.URL.revokeObjectURL(url);
-    a.remove();
-});
-  /*
-  function saveFile (name, type, data) {
-    if (data != null && navigator.msSaveBlob)
-      return navigator.msSaveBlob(data, name);
-    var a = $("<a style='display: none;'/>");
-    var url = window.URL.createObjectURL(data);
-    a.attr("href", url);
-    a.attr("download", name);
-    $("body").append(a);
-    a[0].click();
-    window.URL.revokeObjectURL(url);
-    a.remove();
-  }
-  */
 };
 
 Layout.prototype.createPDFBlob = function(callback) {
