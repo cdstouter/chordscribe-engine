@@ -1,7 +1,7 @@
 var fs = require('fs');
 var path = require('path');
-var PDFDocument = require('pdfkit-cachekerning');
-var fontkit = require('fontkit-cachekerning');
+var PDFDocument = require('pdfkit');
+var fontkit = require('fontkit');
 var _ = require('underscore');
 var $ = require('jquery');
 var async = require('async');
@@ -28,52 +28,54 @@ var Layout = function(inputData) {
   this.decorationInstances = [];
 };
 
-Layout.prototype.loadFonts = function(callback) {
+Layout.prototype.loadFontsBrowser = function(callback) {
   var self = this;
   this.font = {};
   this.fontBuffer = {};
-  if (process.browser) {
-    // we're running in a browser, try to load the fonts with AJAX
-    async.each(_.keys(this.data.fontFiles), function(font, callback) {
-      var xhr = new XMLHttpRequest;
-      xhr.onload = function() {
-        // set the font using the arraybuffer returned from the xhr
-        if (xhr.status != 200) {
-          callback('Font loading failed with HTTP error code ' + String(xhr.status) + ' for file ' + font);
-          return;
-        }
-        console.log('response', xhr.response);
-        var buffer = Buffer.from(xhr.response)
-        self.fontBuffer[font] = buffer;
-        self.font[font] = fontkit.create(buffer);
-        callback();
-      };
-      xhr.onabort = function() {callback('Font loading aborted for file ' + font)};
-      xhr.onerror = function() {callback('Font loading encountered error for file ' + font)};
-      xhr.open('GET', self.data.fontFiles[font], true);
-      xhr.responseType = 'arraybuffer';
-      xhr.send();
-    }, callback);
-  } else {
-    // load the fonts
-    _.each(_.keys(this.data.fontFiles), function(font) {
-      try {
-        self.font[font] = fontkit.openSync(self.data.fontFiles[font]);
-      } catch(e) {
-        // if loading the font from the local directory failed, try loading it from the script directory
-        // if this fails, we let the error propogate and stop execution
-        try {
-          var fontPath = path.join(__dirname, self.data.fontFiles[font]);
-          self.font[font] = fontkit.openSync(fontPath);
-          self.data.fontFiles[font] = fontPath;
-        } catch(e) {
-          callback('Error loading font ' + self.data.fontFiles[font]);
-          return;
-        }
+  // we're running in a browser, try to load the fonts with AJAX
+  async.each(_.keys(this.data.fontFiles), function(font, callback) {
+    var xhr = new XMLHttpRequest;
+    xhr.onload = function() {
+      // set the font using the arraybuffer returned from the xhr
+      if (xhr.status != 200) {
+        callback('Font loading failed with HTTP error code ' + String(xhr.status) + ' for file ' + font);
+        return;
       }
-    });
-    callback();
-  }
+      console.log('response', xhr.response);
+      var buffer = Buffer.from(xhr.response)
+      self.fontBuffer[font] = buffer;
+      self.font[font] = fontkit.create(buffer);
+      if (callback) callback();
+    };
+    xhr.onabort = function() {callback('Font loading aborted for file ' + font)};
+    xhr.onerror = function() {callback('Font loading encountered error for file ' + font)};
+    xhr.open('GET', self.data.fontFiles[font], true);
+    xhr.responseType = 'arraybuffer';
+    xhr.send();
+  }, callback);
+};
+
+Layout.prototype.loadFonts = function() {
+  var self = this;
+  this.font = {};
+  this.fontBuffer = {};
+  // load the fonts
+  _.each(_.keys(this.data.fontFiles), function(font) {
+    try {
+      self.font[font] = fontkit.openSync(self.data.fontFiles[font]);
+    } catch(e) {
+      // if loading the font from the local directory failed, try loading it from the script directory
+      // if this fails, we let the error propogate and stop execution
+      try {
+        var fontPath = path.join(__dirname, self.data.fontFiles[font]);
+        self.font[font] = fontkit.openSync(fontPath);
+        self.data.fontFiles[font] = fontPath;
+      } catch(e) {
+        callback('Error loading font ' + self.data.fontFiles[font]);
+        return;
+      }
+    }
+  });
 };
 
 Layout.prototype.loadDecoration = function(name, object) {
@@ -228,8 +230,6 @@ Layout.prototype.layout = function() {
   }
   this.pages.push(this.layoutPage);
 };
-
-//Layout.prototype.renderPageToDOM = function(container, )
 
 Layout.prototype.makePDF = function(outputFilename) {
   var doc = new PDFDocument({
