@@ -214,9 +214,10 @@ Layout.prototype.layout = function() {
   this.data.effectiveTranspose = this.data.transpose - this.data.capo;
   // load the decorations we're using
   this.decorationInstances.length = 0;
+  var self = this;
   for (var i=0; i<this.data.decorations.length; i++) {
     var deco = this.decorations.find(function(o) {
-      return o.name == this.data.decorations[i];
+      return o.name == self.data.decorations[i];
     });
     if (deco) {
       this.decorationInstances.push(new deco.object(this));
