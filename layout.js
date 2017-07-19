@@ -2,7 +2,6 @@ var fs = require('fs');
 var path = require('path');
 var PDFDocument = require('pdfkit');
 var fontkit = require('fontkit');
-var _ = require('underscore');
 var async = require('async');
 var blobStream = require('blob-stream');
 
@@ -13,9 +12,20 @@ var defaultfooter = require('./decorations/defaultfooter.js');
 // load the default layout settings
 var defaults = require('./layoutDefaults.js');
 
+// utility function
+function objectDefaults(dest, source) {
+  for (var prop in source) {
+    var value = dest[prop];
+    if (value === undefined || !dest.hasOwnProperty(prop)) {
+      dest[prop] = source[prop];
+    }
+  }
+  return dest;
+}
+
 // Creates a new Layout object and initializes it
 var Layout = function(inputData) {
-  this.data = _.defaults(inputData, defaults);
+  this.data = objectDefaults(inputData, defaults);
   
   // expand the margin values if need be
   if (typeof this.data.margin == 'number') {
@@ -32,7 +42,7 @@ Layout.prototype.loadFontsBrowser = function(callback) {
   this.font = {};
   this.fontBuffer = {};
   // we're running in a browser, try to load the fonts with AJAX
-  async.each(_.keys(this.data.fontFiles), function(font, callback) {
+  async.each(Object.keys(this.data.fontFiles), function(font, callback) {
     var xhr = new XMLHttpRequest;
     xhr.onload = function() {
       // set the font using the arraybuffer returned from the xhr
@@ -59,7 +69,7 @@ Layout.prototype.loadFonts = function() {
   this.font = {};
   this.fontBuffer = {};
   // load the fonts
-  _.each(_.keys(this.data.fontFiles), function(font) {
+  Object.keys(this.data.fontFiles).forEach(function(font) {
     try {
       self.font[font] = fontkit.openSync(self.data.fontFiles[font]);
     } catch(e) {
@@ -205,7 +215,9 @@ Layout.prototype.layout = function() {
   // load the decorations we're using
   this.decorationInstances.length = 0;
   for (var i=0; i<this.data.decorations.length; i++) {
-    var deco = _.findWhere(this.decorations, {'name': this.data.decorations[i]});
+    var deco = this.decorations.find(function(o) {
+      return o.name == this.data.decorations[i];
+    });
     if (deco) {
       this.decorationInstances.push(new deco.object(this));
     } else {
@@ -237,7 +249,7 @@ Layout.prototype.makePDF = function(outputFilename) {
   doc.pipe(fs.createWriteStream(outputFilename));
   // register fonts
   var self = this;
-  _.each(_.keys(this.data.fontFiles), function(font) {
+  Object.keys(this.data.fontFiles).forEach(function(font) {
     doc.registerFont(font, self.data.fontFiles[font]);
   });
   console.log('Saving PDF, ' + String(this.pages.length) + ' page(s)...');
@@ -278,7 +290,7 @@ Layout.prototype.createPDFBlob = function(callback) {
   var stream = doc.pipe(blobStream());
   // register fonts
   var self = this;
-  _.each(_.keys(this.data.fontFiles), function(font) {
+  Object.keys(this.data.fontFiles).forEach(function(font) {
     doc.registerFont(font, self.fontBuffer[font]);
   });
   for (var currentPage=0;currentPage<this.pages.length;currentPage++) {
