@@ -52,7 +52,7 @@ Layout.prototype.loadFontsBrowser = function(callback) {
         callback('Font loading failed with HTTP error code ' + String(xhr.status) + ' for file ' + font);
         return;
       }
-      console.log('response', xhr.response);
+      //console.log('response', xhr.response);
       var buffer = Buffer.from(xhr.response)
       self.fontBuffer[font] = buffer;
       self.font[font] = fontkit.create(buffer);
@@ -192,8 +192,6 @@ Layout.prototype.parseChord = function(lineItem) {
   var keyIndRE = /^@key\s?([A-G][#♯b♭]?)\s*$/;
   var keyIndMatch = lineItem.text.match(keyIndRE);
   if (keyIndMatch) {
-    console.log(lineItem);
-    console.log(keyIndMatch[1]);
     if (this.data.autoFlats.enabled) {
       var notenum = this.chordToNumber(keyIndMatch[1]) + this.data.effectiveTranspose;
       notenum = ((notenum % 12) + 12) % 12;
@@ -213,7 +211,6 @@ Layout.prototype.parseChord = function(lineItem) {
           break;
       }
       this.data.flats = flats;
-      console.log('switch key', keyIndMatch[1], notenum, flats);
     }
     return {
       'bracket': true,
