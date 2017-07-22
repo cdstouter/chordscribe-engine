@@ -37,6 +37,8 @@ var Layout = function(inputData) {
   
   this.decorations = [];
   this.decorationInstances = [];
+  
+  this.data.currentKey = 0;
 };
 
 Layout.prototype.loadFontsBrowser = function(callback) {
@@ -170,6 +172,16 @@ Layout.prototype.numberToChord = function(notenum, flats) {
   var flat = this.data.useFancySymbols ? "♭" : "b";
   if (typeof flats == 'undefined') flats = this.data.flats;
   notenum = ((notenum % 12) + 12) % 12;
+  // in the key of F#, E# should be used instead of F
+  // in the key of Gb, Cb should be used instead of B
+  if (this.data.autoFlats.enabled && this.data.currentKey == 6) {
+    if (notenum == 5 && !this.data.flats) {
+      return 'E' + sharp;
+    }
+    if (notenum == 11 && this.data.flats) {
+      return 'C' + flat;
+    }
+  }
   switch(notenum) {
     case 0: return "C"; break;
     case 1: if (this.data.flats) return "D" + flat; else return "C" + sharp; break;
@@ -211,6 +223,7 @@ Layout.prototype.parseChord = function(lineItem) {
           break;
       }
       this.data.flats = flats;
+      this.data.currentKey = notenum;
     }
     return {
       'bracket': true,
