@@ -26,6 +26,8 @@ function objectDefaults(dest, source) {
 // Creates a new Layout object and initializes it
 var Layout = function(inputData) {
   this.data = objectDefaults(inputData, defaults);
+  if (!this.data.hasOwnProperty('autoFlats')) this.data.autoFlats = {};
+  this.data.autoFlats = objectDefaults(this.data.autoFlats, defaults.autoFlats);
   
   // expand the margin values if need be
   if (typeof this.data.margin == 'number') {
@@ -139,15 +141,92 @@ Layout.prototype.measureTextWidth = function(text, font, size) {
   return inWidth;
 };
 
+Layout.prototype.chordToNumber = function(chord) {
+  var chordRE = /^([A-G])([#♯b♭]?)$/;
+  var match = chord.match(chordRE);
+  if (!match) return 0;
+  
+  var note = match[1], accidental = match[2];
+  
+  var notenum = 0;
+  switch(note) {
+    case "C": notenum = 0; break;
+    case "D": notenum = 2; break;
+    case "E": notenum = 4; break;
+    case "F": notenum = 5; break;
+    case "G": notenum = 7; break;
+    case "A": notenum = 9; break;
+    case "B": notenum = 11; break;
+  }
+  if (accidental) {
+    if (accidental == "#" || accidental == "♯") notenum += 1;
+    if (accidental == "b" || accidental == "♭") notenum -= 1;
+  }
+  return notenum;
+};
+
+Layout.prototype.numberToChord = function(notenum, flats) {
+  var sharp = this.data.useFancySymbols ? "♯" : "#";
+  var flat = this.data.useFancySymbols ? "♭" : "b";
+  if (typeof flats == 'undefined') flats = this.data.flats;
+  notenum = ((notenum % 12) + 12) % 12;
+  switch(notenum) {
+    case 0: return "C"; break;
+    case 1: if (this.data.flats) return "D" + flat; else return "C" + sharp; break;
+    case 2: return "D"; break;
+    case 3: if (this.data.flats) return "E" + flat; else return "D" + sharp; break;
+    case 4: return "E"; break;
+    case 5: return "F"; break;
+    case 6: if (this.data.flats) return "G" + flat; else return "F" + sharp; break;
+    case 7: return "G"; break;
+    case 8: if (this.data.flats) return "A" + flat; else return "G" + sharp; break;
+    case 9: return "A"; break;
+    case 10: if (this.data.flats) return "B" + flat; else return "A" + sharp; break;
+    case 11: return "B"; break;
+  }
+}
+
 Layout.prototype.parseChord = function(lineItem) {
   if (!lineItem.bracket) return lineItem;
+  // is this a key indicator?
+  var keyIndRE = /^@key\s?([A-G][#♯b♭]?)\s*$/;
+  var keyIndMatch = lineItem.text.match(keyIndRE);
+  if (keyIndMatch) {
+    console.log(lineItem);
+    console.log(keyIndMatch[1]);
+    if (this.data.autoFlats.enabled) {
+      var notenum = this.chordToNumber(keyIndMatch[1]) + this.data.effectiveTranspose;
+      notenum = ((notenum % 12) + 12) % 12;
+      // flats: F Bb Eb Ab Db (Gb)
+      // sharps: C G D A E B (F#)
+      var flats = false;
+      switch(notenum) {
+        case 5:
+        case 10:
+        case 3:
+        case 8:
+        case 1:
+          flats = true;
+          break;
+        case 6:
+          flats = this.data.autoFlats.favorFlats;
+          break;
+      }
+      this.data.flats = flats;
+      console.log('switch key', keyIndMatch[1], notenum, flats);
+    }
+    return {
+      'bracket': true,
+      'text': '',
+      'originalText': lineItem.text
+    };
+  }
   var newLineItem = {
     'bracket': true,
     'text': lineItem.text,
     'originalText': lineItem.text
   };
   var newstring = lineItem.text;
-  var result = "";
   if (newstring.charAt(0) == "!") {
     return {
       'bracket': true,
@@ -155,57 +234,14 @@ Layout.prototype.parseChord = function(lineItem) {
       'originalText': newstring
     };
   }
-  if (this.data.effectiveTranspose == 0) return lineItem;
-  for (var i=0;i<newstring.length;i++) {
-    var thischar = newstring.charAt(i);
-    var nextchar = "";
-    var notenum = -1;
-    var skiptwo = false;
-    if (i < newstring.length - 1) nextchar = newstring.charAt(i + 1);
-    switch(thischar) {
-      case "C": notenum = 0; break;
-      case "D": notenum = 2; break;
-      case "E": notenum = 4; break;
-      case "F": notenum = 5; break;
-      case "G": notenum = 7; break;
-      case "A": notenum = 9; break;
-      case "B": notenum = 11; break;
-      default:
-        result += thischar;
-    }
-    if (notenum >= 0) {
-      //console.log("notenum " + notenum);
-      if (nextchar == "#" || nextchar == "♯") {
-        notenum += 1;
-        //notenum = (notenum + 1) % 12;
-        //console.log("sharp");
-        skiptwo = true;
-      }
-      if (nextchar == "b" || nextchar == "♭") {
-        notenum -= 1;
-        //notenum = (notenum - 1) % 12;
-        //console.log("flat");
-        skiptwo = true;
-      }
-      notenum = (((notenum + this.data.effectiveTranspose) % 12) + 12) % 12;
-      //console.log(thischar + " " + notenum);
-      switch(notenum) {
-        case 0: result += "C"; break;
-        case 1: if (this.data.flats) result += "Db"; else result += "C#"; break;
-        case 2: result += "D"; break;
-        case 3: if (this.data.flats) result += "Eb"; else result += "D#"; break;
-        case 4: result += "E"; break;
-        case 5: result += "F"; break;
-        case 6: if (this.data.flats) result += "Gb"; else result += "F#"; break;
-        case 7: result += "G"; break;
-        case 8: if (this.data.flats) result += "Ab"; else result += "G#"; break;
-        case 9: result += "A"; break;
-        case 10: if (this.data.flats) result += "Bb"; else result += "A#"; break;
-        case 11: result += "B"; break;
-      }
-    }
-    if (skiptwo) i++;
-  }
+  if (this.data.effectiveTranspose == 0 && !this.data.transformAllChords) return lineItem;
+  var chordRE = /[A-G][#♯b♭]?/g;
+  var self = this;
+  var result = newstring.replace(chordRE, function(chord) {
+    var notenum = self.chordToNumber(chord);
+    notenum = notenum + self.data.effectiveTranspose;
+    return self.numberToChord(notenum);
+  });
   newLineItem.text = result;
   return newLineItem;
 };

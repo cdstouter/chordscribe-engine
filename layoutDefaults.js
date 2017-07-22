@@ -15,7 +15,16 @@ var LayoutDefaults = {
   // song information
   'metadata': {},
   // decorations
-  'decorations': []
+  'decorations': [],
+  // auto flats feature
+  'autoFlats': {
+    'enabled': false,
+    'favorFlats': true // only applies to F#/Gb
+  },
+  // transform all chords - even if transposition is 0, chords are processed
+  'transformAllChords': false,
+  // use ♯ and ♭ instead of # and b
+  'useFancySymbols': false
 };
 
 module.exports = LayoutDefaults;
